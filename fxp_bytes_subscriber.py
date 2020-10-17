@@ -15,9 +15,12 @@ def get_exchange_rate(byte_data):
 def get_date(data):
     current_date = data
     micros = int.from_bytes(current_date, byteorder='big')
-    seconds = micros // 1_000_000
-    millis = micros % 1_000_000
+    seconds = micros / 1_000_000
+    # millis = micros % 1_000_000
     date_sec_added = epoch + datetime.timedelta(0, seconds)
-    current_date = date_sec_added + datetime.timedelta(
-        milliseconds=millis)
-    return current_date
+    # current_date = date_sec_added + datetime.timedelta(
+    #     milliseconds=millis)
+    return date_sec_added
+
+
+print(get_date(b'\x00\x007\xa3e\x8e\xf2\xc0'))

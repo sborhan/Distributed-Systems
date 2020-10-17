@@ -2,6 +2,8 @@ import datetime
 import math
 import sys
 import socket
+from time import sleep
+
 import fxp_bytes_subscriber
 
 # import bellman_ford
@@ -21,34 +23,51 @@ class Lab3(object):
         self.listener, self.listener_address = self.start_a_server()  # socket
         # & host/port
         self.currencies = {}
+        self.receiving_time = {}
         self.my_graph = None
-        self.old_date = datetime.datetime(1970, 1, 1)
-
+        self.old_date = None
+        # 1, 1)
 
     def get_udp_message(self):
         self.listener.settimeout(TIME_OUT)
         self.listener.sendto(self.byte_address, self.provider)
         try:
             # my_graph = bellman_ford.Graph(100)
+
             while True:
+                print(' ')
                 data, server = self.listener.recvfrom(BUFF_SIZE)
-                print('Receiving UDP Message from {}'.format(server))
+                # print('Receiving UDP Message from {}'.format(server))
                 packet = [data[i:i + 32] for i in range(0, len(data), 32)]
-                print('my packet has {} info'.format(len(packet)))
+                print('This packet has {} info'.format(len(packet)))
                 for data in packet:
                     current_date, currency_1, currency_2, exchange_rate = \
                         Lab3.get_info(self, data)
-
+                    for (c1, c2) in self.receiving_time.keys():
+                        received_time = self.receiving_time.get((c1,
+                                                                 c2))
+                        if (datetime.datetime.utcnow() -
+                            received_time).seconds > 1.5:
+                            self.receiving_time.pop((c1, c2))
+                            print('removing stale quote for ({}, {})'.format(
+                                c1, c2))
+                            break
                     print('{} {} {} {}'.format(current_date,
                                                currency_1,
                                                currency_2,
                                                exchange_rate))
+
+                    if self.old_date is None:
+                        self.old_date = current_date
 
                     if current_date < self.old_date:
                         print('ignoring out-of-sequence message')
                         continue
                     else:
                         self.old_date = current_date
+
+                    self.receiving_time[(currency_1, currency_2)] = \
+                        current_date
 
                     # my_graph.addEdge(currency_1, currency_2, exchange_rate)
 

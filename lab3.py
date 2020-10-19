@@ -1,12 +1,10 @@
 import datetime
-import math
 import sys
 import socket
-from time import sleep
 
 import fxp_bytes_subscriber
 
-# import bellman_ford
+import bellman_ford
 
 MY_ADDRESS = ('127.0.0.1', 55555)
 MY_Byte_ADDRESS = b'\x7f\x00\x00\x01\xd9\x03'
@@ -23,35 +21,42 @@ class Lab3(object):
         self.listener, self.listener_address = self.start_a_server()  # socket
         # & host/port
         self.currencies = {}
-        self.receiving_time = {}
+        self.received_time = {}
         self.my_graph = None
         self.old_date = None
-        # 1, 1)
+        self.black_list = []
 
     def get_udp_message(self):
         self.listener.settimeout(TIME_OUT)
         self.listener.sendto(self.byte_address, self.provider)
         try:
-            # my_graph = bellman_ford.Graph(100)
-
+            my_graph = bellman_ford.Graph(100)
             while True:
-                print(' ')
+                # for _ in range(1):
+                #     print(' ')
                 data, server = self.listener.recvfrom(BUFF_SIZE)
                 # print('Receiving UDP Message from {}'.format(server))
                 packet = [data[i:i + 32] for i in range(0, len(data), 32)]
-                print('This packet has {} info'.format(len(packet)))
+                # print('This packet has {} info'.format(len(packet)))
+
+                for (c1, c2) in self.received_time.keys():
+                    received_time = self.received_time.get((c1,
+                                                            c2))
+                    if (datetime.datetime.utcnow() -
+                        received_time).seconds > 1.5:
+                        # self.receiving_time.pop((c1, c2))
+                        self.black_list.append((c1, c2))
+                        print('removing stale quote for ({}, {})'.format(
+                            c1, c2))
+                        # my_graph.RemoveEdge(currency_1, currency_2)
+                        my_graph.RemoveEdge(c1, c2)
+                        continue
+                while self.black_list:
+                    del self.received_time[self.black_list.pop()]
+
                 for data in packet:
                     current_date, currency_1, currency_2, exchange_rate = \
                         Lab3.get_info(self, data)
-                    for (c1, c2) in self.receiving_time.keys():
-                        received_time = self.receiving_time.get((c1,
-                                                                 c2))
-                        if (datetime.datetime.utcnow() -
-                            received_time).seconds > 1.5:
-                            self.receiving_time.pop((c1, c2))
-                            print('removing stale quote for ({}, {})'.format(
-                                c1, c2))
-                            break
                     print('{} {} {} {}'.format(current_date,
                                                currency_1,
                                                currency_2,
@@ -66,14 +71,14 @@ class Lab3(object):
                     else:
                         self.old_date = current_date
 
-                    self.receiving_time[(currency_1, currency_2)] = \
+                    self.received_time[(currency_1, currency_2)] = \
                         current_date
 
-                    # my_graph.addEdge(currency_1, currency_2, exchange_rate)
+                    my_graph.add_edge(currency_1, currency_2, exchange_rate)
 
                     # lab3.print_currencies(self)   # use as a test message
 
-                # my_graph.BellmanFord('USD')
+                my_graph.BellmanFord('USD')
         except socket.timeout:
             print('REQUEST TIMED OUT AFTER {} SECONDS'.format(TIME_OUT))
 
@@ -86,16 +91,10 @@ class Lab3(object):
         currency_2 = fxp_bytes_subscriber.get_currency(data[11:14])
         exchange_rate = fxp_bytes_subscriber.get_exchange_rate(
             data[14:22])
-        # print('my dict has {} data in it now'.format(len(
-        #     self.currencies)))
         if currency_1 not in self.currencies:
             self.currencies[currency_1] = len(self.currencies)
-        # print('my dict has {} data in it now'.format(len(
-        #     self.currencies)))
         if currency_2 not in self.currencies:
             self.currencies[currency_2] = len(self.currencies)
-        # print('my dict has {} data in it now'.format(len(
-        #     self.currencies)))
         return current_date, currency_1, currency_2, exchange_rate
 
     def print_currencies(self):

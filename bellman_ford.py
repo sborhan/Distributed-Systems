@@ -10,71 +10,112 @@ class Graph:
     def __init__(self, vertices):
         self.V = vertices  # No. of vertices
         self.graph = []
-        self.weights = {}
-        self.currencies = {}
+        self.original_weights = {}
+        self.digit_currencies = {}
         self.parents = [int(-1)] * self.V
         self.dfs_graph = dict()
 
     # function to add an edge to graph
-    def addEdge(self, u, v, w):
-        print('my graph is: {}'.format(self.graph))
-        if u not in self.currencies:
-            self.currencies[u] = len(self.currencies)
+    def add_edge(self, currency_1, currency_2, my_orig_weight):
+        if currency_1 not in self.digit_currencies.keys():
+            self.digit_currencies[currency_1] = len(self.digit_currencies)
 
-        if v not in self.currencies:
-            self.currencies[v] = len(self.currencies)
+        if currency_2 not in self.digit_currencies.keys():
+            self.digit_currencies[currency_2] = len(self.digit_currencies)
 
-        self.weights[(self.currencies[u], self.currencies[v])] = w
-        self.weights[(self.currencies[v], self.currencies[u])] = 1 / w
+        forward_digit_currencies = (self.digit_currencies[currency_1],
+                                    self.digit_currencies[
+                                        currency_2])
+        backward_digit_currencies = (self.digit_currencies[currency_2],
+                                     self.digit_currencies[
+                                         currency_1])
 
-        weight = math.log(w, 10)
+        self.original_weights[forward_digit_currencies] = my_orig_weight
+        self.original_weights[backward_digit_currencies] = 1 / my_orig_weight
+
+        my_log_weight = math.log(my_orig_weight, 10)
         index = -1
-        for g, ww in self.graph:
-            # print(index)
+        first_index = -1
+        second_index = -1
+        for vertecies, current_log_weight in self.graph:
 
-            # print('{} == {}'.format(g, (self.currencies.get(u),
-            #                             self.currencies.get(v))))
-            if g == (self.currencies.get(u), self.currencies.get(v)):
-                if ww == w:
-                    # print('Duplicate')
-                    return
-                else:
-                    index += 1
-                    # print(index)
-                    # PROBLEM IS HERE Not deleting just adding again
-                    # print('updating by removing older version')
-                    self.graph[index] = [
-                        (self.currencies[u], self.currencies[v]), -weight]
-                    index += 1
-                    # print(index)
-
-                    # print('inside else index is : {}'.format(index))
-
-                    self.graph[index] = [
-                        (self.currencies[v], self.currencies[u]), weight]
-                    index = -1
-                    return
-        # print('added')
-        self.graph.append([(self.currencies[u], self.currencies[v]), -weight])
-        self.graph.append([(self.currencies[v], self.currencies[u]), weight])
-
-    def RemoveEdge(self, u, v):
-        item1 = (self.currencies[u], self.currencies[v])
-        weight1 = None
-        item2 = (self.currencies[v], self.currencies[u])
-        weight2 = None
-        for v, w in self.graph:
-            if v == item1:
-                weight1 = w
+            if first_index != -1 and second_index != -1:
                 break
-        for v, w in self.graph:
-            if v == item2:
-                weight2 = w
-                break
-        # print('({},{} removed'.format(item1, weight1))
-        self.graph.remove([item1, weight1])
-        self.graph.remove([item2, weight2])
 
+            index += 1
+            if vertecies == (self.digit_currencies.get(currency_2),
+                             self.digit_currencies.get(currency_1)):
+                first_index = index
+                continue
+            if vertecies == (self.digit_currencies.get(currency_1),
+                             self.digit_currencies.get(currency_2)):
+                second_index = index
+                continue
+
+        if first_index != -1 and second_index != -1:
+            remove_1 = self.graph[first_index]
+            remove_2 = self.graph[second_index]
+            self.graph.remove(remove_1)
+            self.graph.remove(remove_2)
+
+        self.graph.insert(len(self.graph), [(self.digit_currencies[currency_1],
+                                             self.digit_currencies[currency_2]),
+                                            -my_log_weight])
+        self.graph.insert(len(self.graph), [(self.digit_currencies[currency_2],
+                                             self.digit_currencies[currency_1]),
+                                            my_log_weight])
+
+        # print('my graph is: ')
+        # for g in self.graph:
+        #     print(g)
+
+    def RemoveEdge(self, currency_1, currency_2):
+
+        # print('my graph before remove is: ')
+        # for g in self.graph:
+        #     print(g)
+
+        forward_digit_currencies = (self.digit_currencies[currency_1],
+                                    self.digit_currencies[
+                                        currency_2])
+        backward_digit_currencies = (self.digit_currencies[currency_2],
+                                     self.digit_currencies[
+                                         currency_1])
+        if (currency_1, currency_2) in self.original_weights.keys():
+            del self.original_weights[forward_digit_currencies]
+            del self.original_weights[backward_digit_currencies]
+
+        elif (currency_2, currency_1) in self.original_weights.keys():
+            del self.original_weights[forward_digit_currencies]
+            del self.original_weights[backward_digit_currencies]
+
+        index = -1
+        first_index = -1
+        second_index = -1
+        for vertecies, current_log_weight in self.graph:
+
+            if first_index != -1 and second_index != -1:
+                break
+
+            index += 1
+            if vertecies == (self.digit_currencies.get(currency_2),
+                             self.digit_currencies.get(currency_1)):
+                first_index = index
+                continue
+            if vertecies == (self.digit_currencies.get(currency_1),
+                             self.digit_currencies.get(currency_2)):
+                second_index = index
+                continue
+
+        if first_index != -1 and second_index != -1:
+            remove_1 = self.graph[first_index]
+            remove_2 = self.graph[second_index]
+            self.graph.remove(remove_1)
+            self.graph.remove(remove_2)
+
+        # print('my graph after remove is: ')
+        # for g in self.graph:
+        #     print(g)
 
     # utility function used to print the solution
     def printArr(self, dist):
@@ -88,12 +129,12 @@ class Graph:
     # also detects negative weight cycle
     def BellmanFord(self, src):
         # print('my graph is now: {}'.format(self.graph))
-        print('SOURCE in bellman IS : {}'.format(src))
-        src = self.currencies.get(src)
+        # print('SOURCE in bellman IS : {}'.format(src))
+        src = self.digit_currencies.get(src)
         # Step 1: Initialize distances from src to all other vertices
         # as INFINITE
         dist = [float("Inf")] * self.V
-        # self.parents = [int(-1)] * self.V
+        self.parents = [int(-1)] * self.V
         dist[src] = 0
 
         # Step 2: Relax all edges |V| - 1 times. A simple shortest
@@ -123,15 +164,14 @@ class Graph:
 
         for p in self.parents:
             if p != -1:
-                predecessor = list(self.currencies.keys())[list(
-                    self.currencies.values()).index(p)]
+                predecessor = list(self.digit_currencies.keys())[list(
+                    self.digit_currencies.values()).index(p)]
                 loop.append(predecessor)
             else:
                 loop.append(-1)
 
         # print('parents are: {}'.format(loop))
         # print(self.parents)
-
 
         for u, w in self.graph:
             print_cycle = None
@@ -161,12 +201,12 @@ class Graph:
                 print_cycle = print_cycle[::-1]
                 # print('Now my real cycle is : {}'.format(print_cycle))
 
-                begin = list(self.currencies.keys())[list(
-                    self.currencies.values()).index(u[0])]
-                end = list(self.currencies.keys())[list(
-                    self.currencies.values()).index(u[1])]
-                predecessor = list(self.currencies.keys())[list(
-                    self.currencies.values()).index(self.parents[u[0]])]
+                begin = list(self.digit_currencies.keys())[list(
+                    self.digit_currencies.values()).index(u[0])]
+                end = list(self.digit_currencies.keys())[list(
+                    self.digit_currencies.values()).index(u[1])]
+                predecessor = list(self.digit_currencies.keys())[list(
+                    self.digit_currencies.values()).index(self.parents[u[0]])]
                 # # print('{} --> {} parent is {}'.format(begin,
                 #                                       end,
                 #                                       predecessor))
@@ -202,7 +242,7 @@ class Graph:
                     node_1 = result[0]
                     profit = 100
 
-                    if result[0] != src or result[len(result)-1] != src:
+                    if result[0] != src or result[len(result) - 1] != src:
                         continue
                     print('ARBITRAGE:')
                     print('\tStart from 100 USD:')
@@ -210,22 +250,22 @@ class Graph:
                         # if node_1 != result[r]:
                         node_2 = result[r]
                         if node_1 != node_2:
-                            weight = self.weights.get((node_1, node_2))
+                            weight = self.original_weights.get((node_1, node_2))
 
-                            begin = list(self.currencies.keys())[list(
-                                self.currencies.values()).index(node_1)]
-                            end = list(self.currencies.keys())[list(
-                                self.currencies.values()).index(node_2)]
-                            print('\tExchange from {} to {} is : {} {}'.format(
-                                begin, end, weight * profit, end))
+                            begin = list(self.digit_currencies.keys())[list(
+                                self.digit_currencies.values()).index(node_1)]
+                            end = list(self.digit_currencies.keys())[list(
+                                self.digit_currencies.values()).index(node_2)]
+                            print('\tExchange {} for {} at {} ---> {} {'
+                                  '}'.format(
+                                begin, end, weight, end, weight * profit))
                             profit = weight * profit
                             node_1 = node_2
-                    if profit > 101:
+                    if profit > 100:
                         is_done = True
                     print(' ')
             if is_done:
                 break
-
 
         # for p in self.graph:
         #   a = list(self.currencies.keys())[list(
@@ -233,6 +273,7 @@ class Graph:
         #   b= list(self.currencies.keys())[list(
         #       self.currencies.values()).index(p[0][1])]
         #   print('{} --> {}'.format(a,b))
+
     def retrace_negative_loop(self, start):
         # print('I am {}'.format(list(self.currencies.keys())[list(
         #     self.currencies.values()).index(start)]))
@@ -244,8 +285,8 @@ class Graph:
 
             next_node = self.parents[next_node]
 
-            predecessor = list(self.currencies.keys())[list(
-                self.currencies.values()).index(next_node)]
+            predecessor = list(self.digit_currencies.keys())[list(
+                self.digit_currencies.values()).index(next_node)]
             # print('my parent is: {}'.format(predecessor))
 
             # print('next node is :{}'.format(next_node))
@@ -282,61 +323,66 @@ class Graph:
 # g.addEdge(5, 6, .8322)
 # g.addEdge(2, 6, .401102)
 
-g = Graph(4)
-g.addEdge('AUD', 'USD', .75035)
-g.addEdge('AUD', 'USD', .75035)
-g.addEdge('AUD', 'USD', .75035)
-g.addEdge('AUD', 'USD', 1.20)
+# g = Graph(5)
+# g.add_edge('AUD', 'USD', .75035)
+# g.add_edge('USD', 'AUD', .75035)
+# g.add_edge('GPB', 'AUD', .75035)
+# g.RemoveEdge('USD', 'AUD')
+#
+# g.add_edge('AUD', 'USD', .85035)
+# g.add_edge('AUD', 'USD', .95035)
+# g.add_edge('AUD', 'USD', 1.20)
+#
+# g.add_edge('USD', 'CHF', 1.0016)
+# g.add_edge('USD', 'JPY', 100.04957)
+# g.add_edge('CHF', 'JPY', 50)
+# g.add_edge('AUD', 'USD', .9999)
+# g.add_edge('USD', 'AUD', .98)
+#
+# g.BellmanFord('USD')
 
+'''
+g = Graph(7)
+g.add_edge('AUD', 'USD', .75035)
+g.add_edge('USD', 'CHF', 1.0016)
+g.add_edge('USD', 'JPY', 100.04957)
+g.add_edge('EUR', 'USD', 1.1002)
+g.add_edge('GBP', 'USD', 1.2516)
+g.add_edge('GBP', 'USD', 1.25162)
+g.add_edge('AUD', 'USD', 0.75047)
+g.add_edge('USD', 'JPY', 100.05876)
+g.add_edge('EUR', 'USD', 1.10043)
+g.add_edge('USD', 'CHF', 1.00154)
+g.add_edge('AUD', 'CAD', 0.30038324044194714)
+g.add_edge('CAD', 'GBP', 1.2015329617677886)
 
-g.addEdge('USD', 'CHF', 1.0016)
-g.addEdge('USD', 'JPY', 100.04957)
-g.addEdge('CHF', 'JPY', 50)
+g.BellmanFord('USD')
+
+g.add_edge('USD', 'JPY', 100.05945)
+g.add_edge('EUR', 'USD', 1.10029)
+g.add_edge('GBP', 'USD', 1.2518)
+g.add_edge('AUD', 'USD', 0.75057)
+g.add_edge('CHF', 'CAD', 0.40110214706340264)
+g.add_edge('CAD', 'GBP', 1.6044085882536105)
 
 g.BellmanFord('USD')
 
 
-# g = Graph(7)
-# g.addEdge('AUD', 'USD', .75035)
-# g.addEdge('USD', 'CHF', 1.0016)
-# g.addEdge('USD', 'JPY', 100.04957)
-# g.addEdge('EUR', 'USD', 1.1002)
-# g.addEdge('GBP', 'USD', 1.2516)
-# g.addEdge('GBP', 'USD', 1.25162)
-# g.addEdge('AUD', 'USD', 0.75047)
-# g.addEdge('USD', 'JPY', 100.05876)
-# g.addEdge('EUR', 'USD', 1.10043)
-# g.addEdge('USD', 'CHF', 1.00154)
-# g.addEdge('AUD', 'CAD', 0.30038324044194714)
-# g.addEdge('CAD', 'GBP', 1.2015329617677886)
-#
-# # g.BellmanFord('USD')
-#
-# g.addEdge('USD', 'JPY', 100.05945)
-# g.addEdge('EUR', 'USD', 1.10029)
-# g.addEdge('GBP', 'USD', 1.2518)
-# g.addEdge('AUD', 'USD', 0.75057)
-# g.addEdge('CHF', 'CAD', 0.40110214706340264)
-# g.addEdge('CAD', 'GBP', 1.6044085882536105)
-#
-# # g.BellmanFord('USD')
-#
-#
-# # g.RemoveEdge('AUD', 'CAD')
-# g.RemoveEdge('USD', 'CHF')
-# # g.BellmanFord('USD')
-#
-# print("************************HERE***********************")
-# g.addEdge('USD', 'JPY', 100.08097)
-# g.addEdge('AUD', 'USD', 0.75049)
-# g.addEdge('USD', 'CHF', 1.0016)
-# g.addEdge('GBP', 'USD', 1.25191)
-# g.addEdge('EUR', 'USD', 1.10048)
-# g.addEdge('AUD', 'JPY', 73.73180687323122)
-#
-# # Print the solution
+# g.RemoveEdge('AUD', 'CAD')
+g.RemoveEdge('USD', 'CHF')
 # g.BellmanFord('USD')
+
+g.add_edge('USD', 'JPY', 100.08097)
+g.add_edge('AUD', 'USD', 0.75049)
+g.add_edge('USD', 'CHF', 1.0016)
+g.add_edge('GBP', 'USD', 1.25191)
+g.add_edge('EUR', 'USD', 1.10048)
+g.add_edge('AUD', 'JPY', 73.73180687323122)
+
+# Print the solution
+g.BellmanFord('USD')
+
 #
-# #
-# # # Initially, Contributed by Neelam Yadav
-# # # Later On, Edited by Himanshu Garg
+# # Initially, Contributed by Neelam Yadav
+# # Later On, Edited by Himanshu Garg
+'''

@@ -53,8 +53,13 @@ class Lab3(object):
          fxp_bytes_subscriber library and making the graph and proving arbitrage
          by using bellman ford library
         """
+        print('Subscribing to {}\n'.format(self.provider))
+        try:
+            self.listener.sendto(self.byte_address, self.provider)
+        except Exception as err:
+            print('Error : {}'.format(err))
+            return
 
-        self.listener.sendto(self.byte_address, self.provider)
         while True:
             print('\nWaiting {} minutes to receive all UDP '
                   'messages....\n'.format(int(TIME_OUT / 60)))
@@ -62,7 +67,8 @@ class Lab3(object):
                 self.listener.settimeout(TIME_OUT)
                 data, server = self.listener.recvfrom(BUFF_SIZE)
             except socket.timeout:
-                print('REQUEST TIMED OUT AFTER {} minutes'.format(TIME_OUT/60))
+                print(
+                    'REQUEST TIMED OUT AFTER {} minutes'.format(TIME_OUT / 60))
                 print('Socket Closed : No More Data Received!')
                 self.listener.close()
                 break
@@ -149,7 +155,7 @@ class Lab3(object):
         """
         listener = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         listener.bind(MY_ADDRESS)
-        print('My Socket binding with: {}'.format(MY_ADDRESS))
+        print('\nMy Socket binding with: {}'.format(MY_ADDRESS))
         return listener, listener.getsockname()
 
 
@@ -161,9 +167,9 @@ def check_input(user_input):
     """
     provider_port = None
     provider_host = None
-
     if len(user_input) == 2 or len(user_input) > 3:
         print("Usage: python3 lab3.py [Provider_HOST] [Provider_PORT] ")
+        exit(1)
 
     elif len(user_input) == 1:
         provider_host = 'localhost'
@@ -179,8 +185,10 @@ def check_input(user_input):
         if provider_port not in range(1025, 65536):
             print("Port needs to be between 1025-65535.")
             exit(1)
-
-        provider_host = user_input[1]
+        try:
+            provider_host = user_input[1]
+        except Exception as err:
+            print('Error: {}'.format(err))
 
     return provider_host, provider_port
 
